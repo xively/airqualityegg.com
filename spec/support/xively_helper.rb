@@ -56,12 +56,12 @@ def egg_json
       "id":"Temperature_00-04-a3-9f-c4-66_0",
       "min_value":"14.0"}
     ],
-  "feed":"https://api.cosm.com/v2/feeds/101.json",
+  "feed":"https://api.xively.com/v2/feeds/101.json",
   "version":"1.0.0",
   "private":"false",
   "updated":"2013-01-10T09:50:50.583541Z",
   "id":101,
-  "creator":"https://cosm.com/users/airqualityegg",
+  "creator":"https://xively.com/users/airqualityegg",
   "title":"Joe's Air Quality Egg"
 }
 EOF
@@ -122,12 +122,12 @@ def no_tag_json
       "id":"Temperature_00-04-a3-9f-c4-66_0",
       "min_value":"14.0"}
     ],
-  "feed":"https://api.cosm.com/v2/feeds/101.json",
+  "feed":"https://api.xively.com/v2/feeds/101.json",
   "version":"1.0.0",
   "private":"false",
   "updated":"2013-01-10T09:50:50.583541Z",
   "id":101,
-  "creator":"https://cosm.com/users/airqualityegg",
+  "creator":"https://xively.com/users/airqualityegg",
   "title":"Joe's Air Quality Egg"
 }
 EOF
