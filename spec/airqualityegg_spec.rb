@@ -4,7 +4,7 @@ describe AirQualityEgg, :type => :request do
 
   before do
     WebMock.reset!
-    map_request = stub_request(:get, "http://api.cosm.com/v2/feeds.json?amp;mapped=true&tag=device:type=airqualityegg").
+    map_request = stub_request(:get, "http://api.xively.com/v2/feeds.json?amp;mapped=true&tag=device:type=airqualityegg").
       with(:headers => {'Content-Type'=>'application/json', 'X-Apikey'=>'apikey'}).
       to_return(:status => 200, :body => '{"itemsPerPage":100,"results":[],"totalResults":0,"startIndex":0}', :headers => {})
   end
@@ -17,7 +17,7 @@ describe AirQualityEgg, :type => :request do
 
   it "should render the homepage even if the feed search fails" do
     WebMock.reset!
-    map_request = stub_request(:get, "http://api.cosm.com/v2/feeds.json?amp;mapped=true&tag=device:type=airqualityegg").
+    map_request = stub_request(:get, "http://api.xively.com/v2/feeds.json?amp;mapped=true&tag=device:type=airqualityegg").
       to_return(:status => 500, :body => 'error', :headers => {})
     visit '/'
     page.find('.branding-logo').should have_content "Air Quality Egg"
@@ -26,10 +26,10 @@ describe AirQualityEgg, :type => :request do
   describe 'registering' do
 
     it 'should render the edit form if found' do
-      stub_request(:get, "http://api.cosm.com/v2/feeds/101.json").
+      stub_request(:get, "http://api.xively.com/v2/feeds/101.json").
         with(:headers => { 'X-ApiKey' => 'HSA8lzxDe-uOigbz8Ic_syfuGsaSAKxjcUZMS3NTbXJhWT0g' }).
         to_return(:status => 200, :body => Xively::Feed.new(:title => "Joe's Air Quality Egg", :id => 101).to_json)
-      stub_request(:get, "http://api.cosm.com/v2/products/airqualityegg/devices/123/activate").
+      stub_request(:get, "http://api.xively.com/v2/products/airqualityegg/devices/123/activate").
         with(:headers => { 'X-ApiKey' => 'apikey'}).
         to_return(:status => 200, :body => MultiJson.dump({"datastreams"=>[], "feed_id"=>101, "apikey"=>"HSA8lzxDe-uOigbz8Ic_syfuGsaSAKxjcUZMS3NTbXJhWT0g"}))
       visit '/'
@@ -39,10 +39,10 @@ describe AirQualityEgg, :type => :request do
     end
 
     it "should downcase serial before activating" do
-      stub_request(:get, "http://api.cosm.com/v2/feeds/101.json").
+      stub_request(:get, "http://api.xively.com/v2/feeds/101.json").
         with(:headers => { 'X-ApiKey' => 'HSA8lzxDe-uOigbz8Ic_syfuGsaSAKxjcUZMS3NTbXJhWT0g' }).
         to_return(:status => 200, :body => Xively::Feed.new(:title => "Joe's Air Quality Egg", :id => 101).to_json)
-      stub_request(:get, "http://api.cosm.com/v2/products/airqualityegg/devices/ab:12:cd:34:ef:56/activate").
+      stub_request(:get, "http://api.xively.com/v2/products/airqualityegg/devices/ab:12:cd:34:ef:56/activate").
         with(:headers => { 'X-ApiKey' => 'apikey'}).
         to_return(:status => 200, :body => MultiJson.dump({"datastreams"=>[], "feed_id"=>101, "apikey"=>"HSA8lzxDe-uOigbz8Ic_syfuGsaSAKxjcUZMS3NTbXJhWT0g"}))
       visit '/'
@@ -60,7 +60,7 @@ describe AirQualityEgg, :type => :request do
     end
 
     it 'should handle missing eggs' do
-      request_stub = stub_request(:get, "http://api.cosm.com/v2/products/airqualityegg/devices/123/activate").
+      request_stub = stub_request(:get, "http://api.xively.com/v2/products/airqualityegg/devices/123/activate").
         with(:headers => { 'X-ApiKey' => 'apikey'}).
         to_return(:status => 404, :body => MultiJson.dump({"title"=>"Not found", "errors"=>"I'm sorry we are unable to find the device you are looking for."}))
       visit '/'
@@ -82,13 +82,13 @@ describe AirQualityEgg, :type => :request do
 
     context "after registering" do
       before do
-        stub_request(:get, "http://api.cosm.com/v2/products/airqualityegg/devices/123/activate").
+        stub_request(:get, "http://api.xively.com/v2/products/airqualityegg/devices/123/activate").
           with(:headers => { 'X-ApiKey' => 'apikey'}).
           to_return(:status => 200, :body => MultiJson.dump({"datastreams"=>[], "feed_id"=>101, "apikey"=>"HSA8lzxDe-uOigbz8Ic_syfuGsaSAKxjcUZMS3NTbXJhWT0g"}))
-        stub_request(:get, "http://api.cosm.com/v2/feeds/101.json").
+        stub_request(:get, "http://api.xively.com/v2/feeds/101.json").
           with(:headers => { 'X-ApiKey' => 'HSA8lzxDe-uOigbz8Ic_syfuGsaSAKxjcUZMS3NTbXJhWT0g' }).
           to_return(:status => 200, :body => Xively::Feed.new(:title => "Joe's Air Quality Egg", :id => 101, :tags => 'airqualityegg').to_json)
-        stub_request(:get, "http://api.cosm.com/v2/feeds/101.json").
+        stub_request(:get, "http://api.xively.com/v2/feeds/101.json").
           with(:headers => { 'X-ApiKey' => 'apikey' }).
           to_return(:status => 200, :body => Xively::Feed.new(:title => "Joe's London based egg", :id => 101).to_json)
         visit '/'
@@ -102,7 +102,7 @@ describe AirQualityEgg, :type => :request do
       end
 
       it 'should allow updating the egg and render the dashboard' do
-        stub_request(:put, "http://api.cosm.com/v2/feeds/101.json").
+        stub_request(:put, "http://api.xively.com/v2/feeds/101.json").
           with(:headers => { 'X-ApiKey' => 'HSA8lzxDe-uOigbz8Ic_syfuGsaSAKxjcUZMS3NTbXJhWT0g' },
                :body => {"id" => 101,"title" => "Joe's London based egg","description" => "I built this egg with rock and roll","version" => "1.0.0", "private" => "false", "location" => {"lat" => "51.5081289", "lon" => "-0.12800500000003012", "exposure" => "indoor"}, "tags" => ["airqualityegg", "device:type=airqualityegg"]}).
           to_return(:status => 200, :body => "")
@@ -124,7 +124,7 @@ describe AirQualityEgg, :type => :request do
 
   describe 'dashboard' do
     before do
-      stub_request(:get, "http://api.cosm.com/v2/feeds/101.json").
+      stub_request(:get, "http://api.xively.com/v2/feeds/101.json").
         with(:headers => { 'X-ApiKey' => 'apikey' }).
         to_return(:status => 200, :body => egg_json)
     end
@@ -148,7 +148,7 @@ describe AirQualityEgg, :type => :request do
     end
 
     it "should not render a 500 error if return json doesn't have tags for every datastream" do
-      stub_request(:get, "http://api.cosm.com/v2/feeds/101.json").
+      stub_request(:get, "http://api.xively.com/v2/feeds/101.json").
         with(:headers => { 'X-ApiKey' => 'apikey' }).
         to_return(:status => 200, :body => no_tag_json)
       visit "/egg/101"
