@@ -13,3 +13,7 @@ WebMock.disable_net_connect!
 
 # Requires all files in ./support/ and its subdirectories.
 Dir[File.expand_path(File.join(File.dirname(__FILE__),'support','**','*.rb'))].each {|f| require f}
+
+RSpec.configure do |config|
+  config.include Capybara::DSL
+end
