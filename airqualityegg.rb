@@ -61,21 +61,8 @@ class AirQualityEgg < Sinatra::Base
 
     cached_data = settings.cache.fetch(cache_key) do
       # fetch all feeds into 'all_feeds'
-      page = 1
-      all_feeds = []
-      base_url = "https://api.xively.com/v2/feeds.json?tag=device%3Atype%3Dairqualityegg&mapped=true&content=summary&per_page=100"
-      page_url = "#{base_url}&page=#{page}"
-      page_response = Xively::Client.get(page_url, :headers => {'Content-Type' => 'application/json', 'X-ApiKey' => $api_key})
-      until page_response.code != 200 # Unfortunately, Xively API seems to 500 when there are no more results
-        page_results = Xively::SearchResult.new(page_response.body).results
-        all_feeds = all_feeds + page_results
-        page += 1
-        page_url = "#{base_url}&page=#{page}"
-        page_response = Xively::Client.get(page_url, :headers => {'Content-Type' => 'application/json', 'X-ApiKey' => $api_key})
-      end
-      all_feeds = collect_map_markers(all_feeds)
-
-      # store in cache
+      all_feeds = fetch_all_feeds
+      # store in cache and return
       settings.cache.set(cache_key, all_feeds, settings.cache_time)
       all_feeds
     end
@@ -176,6 +163,23 @@ class AirQualityEgg < Sinatra::Base
   def feeds_url(feed)
     feeds_near = (feed && feed.location_lat && feed.location_lon) ? "&lat=#{feed.location_lat}&lon=#{feed.location_lon}&distance=400" : ''
     "#{$api_url}/v2/feeds.json?tag=device%3Atype%3Dairqualityegg&mapped=true#{feeds_near}"
+  end
+
+  def fetch_all_feeds
+    page = 1
+    all_feeds = []
+    base_url = "https://api.xively.com/v2/feeds.json?tag=device%3Atype%3Dairqualityegg&mapped=true&content=summary&per_page=100"
+    page_url = "#{base_url}&page=#{page}"
+    page_response = Xively::Client.get(page_url, :headers => {'Content-Type' => 'application/json', 'X-ApiKey' => $api_key})
+    until page_response.code != 200 # Unfortunately, Xively API seems to 500 when there are no more results
+      logger.info("fetched page #{page} of 100 feeds") if Sinatra::Base.development?
+      page_results = Xively::SearchResult.new(page_response.body).results
+      all_feeds = all_feeds + page_results
+      page += 1
+      page_url = "#{base_url}&page=#{page}"
+      page_response = Xively::Client.get(page_url, :headers => {'Content-Type' => 'application/json', 'X-ApiKey' => $api_key})
+    end
+    all_feeds = collect_map_markers(all_feeds)
   end
 
   def product_url
