@@ -40,6 +40,8 @@ var AQE = (function ( $ ) {
       for ( var x = 0, len = mapmarkers.length; x < len; x++ ) {
         addMapMarker( mapmarkers[x].lat, mapmarkers[x].lng, mapmarkers[x].feed_id );
       }
+
+      $("span#num_eggs").html(mapmarkers.length)
     })
 
     $.each(["recently_created_at","recently_retrieved_at"],function(i,order){
