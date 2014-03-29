@@ -6,6 +6,7 @@ require 'sass'
 require 'xively-rb'
 require 'dalli'
 require 'memcachier'
+require 'json'
 
 
 class AirQualityEgg < Sinatra::Base
@@ -60,13 +61,26 @@ class AirQualityEgg < Sinatra::Base
     content_type :json
     cache_key = "all_feeds"
     cached_data = settings.cache.fetch(cache_key) do
-      # fetch all feeds into 'all_feeds'
       all_feeds = fetch_all_feeds
       # store in cache and return
       settings.cache.set(cache_key, all_feeds, settings.cache_time)
       all_feeds
     end
     return cached_data
+  end
+
+  get '/recently_:order.json' do
+    content_type :json
+    cache_key = "recently_#{params[:order]}"
+    cached_data = settings.cache.fetch(cache_key) do
+      # fetch feeds based on input
+      recently_response = fetch_xively_url("https://api.xively.com/v2/feeds.json?tag=device%3Atype%3Dairqualityegg&mapped=true&content=summary&per_page=10&order=#{params[:order]}")
+      recently_results = Xively::SearchResult.new(recently_response.body).results.map(&:attributes)
+      # store in cache and return
+      settings.cache.set(cache_key, recently_results, settings.cache_time)
+      recently_results
+    end
+    return cached_data.to_json
   end
 
   # Edit egg metadata
@@ -126,8 +140,8 @@ class AirQualityEgg < Sinatra::Base
     erb :show
   end
 
-  get '/flush/cache' do
-    settings.cache.flush
+  get '/cache/flush' do
+    return settings.cache.flush.to_s
   end
 
   private
