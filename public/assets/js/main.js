@@ -33,11 +33,13 @@ var AQE = (function ( $ ) {
       });
     }
 
-    if ( mapmarkers && mapmarkers.length ) {
+    $.getJSON("/all_feeds.json", function(mapmarkers){
       for ( var x = 0, len = mapmarkers.length; x < len; x++ ) {
         addMapMarker( mapmarkers[x].lat, mapmarkers[x].lng, mapmarkers[x].feed_id );
       }
-    }
+    })
+
+
   }
 
   function handleNoGeolocation() {

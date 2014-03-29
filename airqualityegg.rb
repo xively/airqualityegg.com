@@ -4,6 +4,8 @@ require 'sinatra/base'
 require 'sinatra/reloader' if Sinatra::Base.development?
 require 'sass'
 require 'xively-rb'
+require 'dalli'
+require 'memcachier'
 
 
 class AirQualityEgg < Sinatra::Base
@@ -21,14 +23,17 @@ class AirQualityEgg < Sinatra::Base
     puts "WARN: You should set a SESSION_SECRET" unless ENV['SESSION_SECRET']
 
     set :session_secret, ENV['SESSION_SECRET'] || 'airqualityegg_session_secret'
+    set :cache, Dalli::Client.new
   end
 
   configure :production do
     require 'newrelic_rpm'
+    set :cache_time, 3600 # one hour
   end
 
   configure :development do
     register Sinatra::Reloader
+    set :cache_time, 60
   end
 
   helpers do
@@ -39,6 +44,10 @@ class AirQualityEgg < Sinatra::Base
     end
   end
 
+  settings.cache.flush # run this so everytime we restart the app, the cache is flushed
+
+
+
   # Render css from scss
   get '/style.css' do
     scss :style
@@ -47,9 +56,35 @@ class AirQualityEgg < Sinatra::Base
   # Home page
   get '/' do
     @error = session.delete(:error)
-    @feeds = find_egg_feeds
-    @map_markers = collect_map_markers(@feeds)
     erb :home
+  end
+
+  get '/all_feeds.json' do
+    content_type :json
+    cache_key = "all_feeds"
+
+    cached_data = settings.cache.fetch(cache_key) do
+      # fetch all feeds into 'all_feeds'
+      page = 1
+      all_feeds = []
+      base_url = "https://api.xively.com/v2/feeds.json?tag=device%3Atype%3Dairqualityegg&mapped=true&content=summary&per_page=100"
+      page_url = "#{base_url}&page=#{page}"
+      page_response = Xively::Client.get(page_url, :headers => {'Content-Type' => 'application/json', 'X-ApiKey' => $api_key})
+      until page_response.code != 200 # Unfortunately, Xively API seems to 500 when there are no more results
+        page_results = Xively::SearchResult.new(page_response.body).results
+        all_feeds = all_feeds + page_results
+        page += 1
+        page_url = "#{base_url}&page=#{page}"
+        page_response = Xively::Client.get(page_url, :headers => {'Content-Type' => 'application/json', 'X-ApiKey' => $api_key})
+      end
+      all_feeds = collect_map_markers(all_feeds)
+
+      # store in cache
+      settings.cache.set(cache_key, all_feeds, settings.cache_time)
+      all_feeds
+    end
+
+    return cached_data
   end
 
   # Edit egg metadata
