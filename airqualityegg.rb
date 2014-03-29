@@ -28,12 +28,12 @@ class AirQualityEgg < Sinatra::Base
 
   configure :production do
     require 'newrelic_rpm'
-    set :cache_time, 3600 # one hour
+    set :cache_time, 3600*12 # 12 hours
   end
 
   configure :development do
     register Sinatra::Reloader
-    set :cache_time, 60
+    set :cache_time, 300 # five minutes
   end
 
   helpers do
