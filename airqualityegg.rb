@@ -44,10 +44,6 @@ class AirQualityEgg < Sinatra::Base
     end
   end
 
-  settings.cache.flush # run this so everytime we restart the app, the cache is flushed
-
-
-
   # Render css from scss
   get '/style.css' do
     scss :style
