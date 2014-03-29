@@ -55,10 +55,10 @@ class AirQualityEgg < Sinatra::Base
     erb :home
   end
 
+  # Endpoint used by home page
   get '/all_feeds.json' do
     content_type :json
     cache_key = "all_feeds"
-
     cached_data = settings.cache.fetch(cache_key) do
       # fetch all feeds into 'all_feeds'
       all_feeds = fetch_all_feeds
@@ -66,7 +66,6 @@ class AirQualityEgg < Sinatra::Base
       settings.cache.set(cache_key, all_feeds, settings.cache_time)
       all_feeds
     end
-
     return cached_data
   end
 
@@ -127,6 +126,10 @@ class AirQualityEgg < Sinatra::Base
     erb :show
   end
 
+  get '/flush/cache' do
+    settings.cache.flush
+  end
+
   private
 
   def extract_feed_id_and_api_key_from_session
@@ -169,17 +172,19 @@ class AirQualityEgg < Sinatra::Base
     page = 1
     all_feeds = []
     base_url = "https://api.xively.com/v2/feeds.json?tag=device%3Atype%3Dairqualityegg&mapped=true&content=summary&per_page=100"
-    page_url = "#{base_url}&page=#{page}"
-    page_response = Xively::Client.get(page_url, :headers => {'Content-Type' => 'application/json', 'X-ApiKey' => $api_key})
-    until page_response.code != 200 # Unfortunately, Xively API seems to 500 when there are no more results
+    page_response = fetch_xively_url("#{base_url}&page=#{page}")
+    while page_response.code == 200 # Unfortunately, Xively API seems to 500 when there are no more results
       logger.info("fetched page #{page} of 100 feeds") if Sinatra::Base.development?
       page_results = Xively::SearchResult.new(page_response.body).results
       all_feeds = all_feeds + page_results
       page += 1
-      page_url = "#{base_url}&page=#{page}"
-      page_response = Xively::Client.get(page_url, :headers => {'Content-Type' => 'application/json', 'X-ApiKey' => $api_key})
+      page_response = fetch_xively_url("#{base_url}&page=#{page}")
     end
     all_feeds = collect_map_markers(all_feeds)
+  end
+
+  def fetch_xively_url(url)
+    Xively::Client.get(url, :headers => {'Content-Type' => 'application/json', 'X-ApiKey' => $api_key})
   end
 
   def product_url
