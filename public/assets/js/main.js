@@ -8,32 +8,35 @@ var AQE = (function ( $ ) {
   var map;
 
   function initialize() {
-    var mapOptions = {
-      zoom: 3,
-      mapTypeId: google.maps.MapTypeId.TERRAIN,
-      streetViewControl: false,
-      scrollwheel: false
-    };
-    map = new google.maps.Map(document.getElementById('map_canvas'),
-        mapOptions);
-    handleNoGeolocation();
-    
-    if ( $(".dashboard-map").length && mapmarkers && mapmarkers.length ) {
-      var dashpos = new google.maps.LatLng(mapmarkers[0].lat, mapmarkers[0].lng);
-      map.setCenter(dashpos);
-      map.setZoom(5);
-    }
-    // Try HTML5 geolocation
-    else if(navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(function(position) {
-        var pos = new google.maps.LatLng(position.coords.latitude,
-                                          position.coords.longitude);
 
-        map.setCenter(pos);
-      });
-    }
-
+    // load all feeds and then initialize map and add the markers
     $.getJSON("/all_feeds.json", function(mapmarkers){
+
+      var mapOptions = {
+        zoom: 3,
+        mapTypeId: google.maps.MapTypeId.TERRAIN,
+        streetViewControl: false,
+        scrollwheel: false
+      };
+      map = new google.maps.Map(document.getElementById('map_canvas'),
+          mapOptions);
+      handleNoGeolocation();
+      
+      if ( $(".dashboard-map").length && mapmarkers && mapmarkers.length ) {
+        var dashpos = new google.maps.LatLng(mapmarkers[0].lat, mapmarkers[0].lng);
+        map.setCenter(dashpos);
+        map.setZoom(5);
+      }
+      // Try HTML5 geolocation
+      else if(navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+          var pos = new google.maps.LatLng(position.coords.latitude,
+                                            position.coords.longitude);
+
+          map.setCenter(pos);
+        });
+      }
+
       for ( var x = 0, len = mapmarkers.length; x < len; x++ ) {
         addMapMarker( mapmarkers[x].lat, mapmarkers[x].lng, mapmarkers[x].feed_id );
       }
