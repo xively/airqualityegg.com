@@ -42,6 +42,12 @@ var AQE = (function ( $ ) {
       }
     })
 
+    $.each(["recently_created_at","recently_retrieved_at"],function(i,order){
+      $.getJSON("/"+order+".json", function(data){
+        $("#"+order).html(JSON.stringify(data, undefined, 2))
+      })
+    })
+
 
   }
 
