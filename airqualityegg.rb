@@ -52,6 +52,7 @@ class AirQualityEgg < Sinatra::Base
 
   # Home page
   get '/' do
+    @local_feed_path = '/all_feeds.json'
     @error = session.delete(:error)
     erb :home
   end
@@ -135,9 +136,17 @@ class AirQualityEgg < Sinatra::Base
     @co = @feed.datastreams.detect{|d| !d.tags.nil? && d.tags.match(/computed/) && d.tags.match(/sensor_type=CO/)}
     @temperature = @feed.datastreams.detect{|d| !d.tags.nil? && d.tags.match(/computed/) && d.tags.match(/sensor_type=Temperature/)}
     @humidity = @feed.datastreams.detect{|d| !d.tags.nil? && d.tags.match(/computed/) && d.tags.match(/sensor_type=Humidity/)}
+    @local_feed_path = "/egg/#{params[:id]}/nearby.json"
+    erb :show
+  end
+
+  get '/egg/:id/nearby.json' do
+    content_type :json
+    response = Xively::Client.get(feed_url(params[:id]), :headers => {"X-ApiKey" => $api_key})
+    @feed = Xively::Feed.new(response.body)
     @feeds = find_egg_feeds_near(@feed)
     @map_markers = collect_map_markers(@feeds)
-    erb :show
+    return @map_markers
   end
 
   get '/cache/flush' do
@@ -178,7 +187,7 @@ class AirQualityEgg < Sinatra::Base
   end
 
   def feeds_url(feed)
-    feeds_near = (feed && feed.location_lat && feed.location_lon) ? "&lat=#{feed.location_lat}&lon=#{feed.location_lon}&distance=400" : ''
+    feeds_near = (feed && feed.location_lat && feed.location_lon) ? "&lat=#{feed.location_lat}&lon=#{feed.location_lon}&distance=500&distance_units=kms" : ''
     "#{$api_url}/v2/feeds.json?user=airqualityegg&mapped=true#{feeds_near}"
   end
 
@@ -187,7 +196,7 @@ class AirQualityEgg < Sinatra::Base
     all_feeds = []
     base_url = "#{$api_url}/v2/feeds.json?user=airqualityegg&mapped=true&content=summary&per_page=100"
     page_response = fetch_xively_url("#{base_url}&page=#{page}")
-    while page_response.code == 200 && page_response["results"].size > 0 # Unfortunately, Xively API seems to 500 when there are no more results
+    while page_response.code == 200 && page_response["results"].size > 0
       logger.info("fetched page #{page} of 100 feeds") if Sinatra::Base.development?
       page_results = Xively::SearchResult.new(page_response.body).results
       all_feeds = all_feeds + page_results

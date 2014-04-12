@@ -9,48 +9,55 @@ var AQE = (function ( $ ) {
 
   function initialize() {
 
-    // load all feeds and then initialize map and add the markers
-    $.getJSON("/all_feeds.json", function(mapmarkers){
+    // load feeds and then initialize map and add the markers
+    if(local_feed_path){
+      $.getJSON(local_feed_path, function(mapmarkers){
 
-      var mapOptions = {
-        zoom: 3,
-        mapTypeId: google.maps.MapTypeId.TERRAIN,
-        streetViewControl: false,
-        scrollwheel: false
-      };
-      map = new google.maps.Map(document.getElementById('map_canvas'),
-          mapOptions);
-      handleNoGeolocation();
-      
-      if ( $(".dashboard-map").length && mapmarkers && mapmarkers.length ) {
-        var dashpos = new google.maps.LatLng(mapmarkers[0].lat, mapmarkers[0].lng);
-        map.setCenter(dashpos);
-        map.setZoom(5);
-      }
-      // Try HTML5 geolocation
-      else if(navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(position) {
-          var pos = new google.maps.LatLng(position.coords.latitude,
-                                            position.coords.longitude);
+        var mapOptions = {
+          zoom: 3,
+          mapTypeId: google.maps.MapTypeId.TERRAIN,
+          streetViewControl: false,
+          scrollwheel: false
+        };
+        map = new google.maps.Map(document.getElementById('map_canvas'),
+            mapOptions);
+        handleNoGeolocation();
+        
+        // if on an egg's page, zoom in a little close to it
+        if ( $(".dashboard-map").length && mapmarkers && mapmarkers.length ) {
+          var dashpos = new google.maps.LatLng(mapmarkers[0].lat, mapmarkers[0].lng);
+          map.setCenter(dashpos);
+          map.setZoom(6);
+        }
+        // Try HTML5 geolocation
+        else if(navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(function(position) {
+            var pos = new google.maps.LatLng(position.coords.latitude,
+                                              position.coords.longitude);
 
-          map.setCenter(pos);
-        });
-      }
+            map.setCenter(pos);
+          });
+        }
 
-      for ( var x = 0, len = mapmarkers.length; x < len; x++ ) {
-        addMapMarker( mapmarkers[x].lat, mapmarkers[x].lng, mapmarkers[x].feed_id );
-      }
+        // add eggs to map
+        for ( var x = 0, len = mapmarkers.length; x < len; x++ ) {
+          addMapMarker( mapmarkers[x].lat, mapmarkers[x].lng, mapmarkers[x].feed_id );
+        }
 
-      $("span#num_eggs").html(mapmarkers.length)
-    })
-
-    $.each(["recently_created_at","recently_retrieved_at"],function(i,order){
-      $.getJSON("/"+order+".json", function(data){
-        $.each(data, function(i,egg){
-          $("#"+order).append("<li><a href='/egg/"+egg.id+"'>"+egg.title+"</a> is a "+egg.status+" "+egg.location_exposure+" egg that was created "+moment(egg.created).fromNow()+" and last updated "+moment(egg.updated).fromNow()+" </li>")
-        })
+        $("span#num_eggs").html(mapmarkers.length)
       })
-    })
+    }
+
+    // if on home page, load recently created and updated eggs
+    if($(".home-map")){
+      $.each(["recently_created_at","recently_retrieved_at"],function(i,order){
+        $.getJSON("/"+order+".json", function(data){
+          $.each(data, function(i,egg){
+            $("#"+order).append("<li><a href='/egg/"+egg.id+"'>"+egg.title+"</a> is a "+egg.status+" "+egg.location_exposure+" egg that was created "+moment(egg.created).fromNow()+" and last updated "+moment(egg.updated).fromNow()+" </li>")
+          })
+        })
+      })      
+    }
 
 
   }
