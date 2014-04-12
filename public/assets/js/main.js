@@ -22,7 +22,18 @@ var AQE = (function ( $ ) {
         map = new google.maps.Map(document.getElementById('map_canvas'),
             mapOptions);
         handleNoGeolocation();
-        
+
+        // Create a search box and link it to the UI element
+        // (via https://developers.google.com/maps/documentation/javascript/examples/places-searchbox)
+        var input = (document.getElementById('pac-input'));
+        map.controls[google.maps.ControlPosition.TOP_LEFT].push(input);
+        var searchBox = new google.maps.places.SearchBox((input));
+        google.maps.event.addListener(searchBox, 'places_changed', function() {
+          var places = searchBox.getPlaces();
+          map.setCenter(places[0].geometry.location);
+          map.setZoom(10);
+        });
+
         // if on an egg's page, zoom in a little close to it
         if ( $(".dashboard-map").length && mapmarkers && mapmarkers.length ) {
           var dashpos = new google.maps.LatLng(mapmarkers[0].lat, mapmarkers[0].lng);
@@ -48,8 +59,9 @@ var AQE = (function ( $ ) {
       })
     }
 
-    // if on home page, load recently created and updated eggs
-    if($(".home-map")){
+    // if on home page, show search box and load recently created and updated eggs
+    if($(".home-map").length != []){
+      $("#pac-input").show()
       $.each(["recently_created_at","recently_retrieved_at"],function(i,order){
         $.getJSON("/"+order+".json", function(data){
           $.each(data, function(i,egg){
