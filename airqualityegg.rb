@@ -74,7 +74,7 @@ class AirQualityEgg < Sinatra::Base
     cache_key = "recently_#{params[:order]}"
     cached_data = settings.cache.fetch(cache_key) do
       # fetch feeds based on input
-      recently_response = fetch_xively_url("https://api.xively.com/v2/feeds.json?tag=device%3Atype%3Dairqualityegg&mapped=true&content=summary&per_page=10&order=#{params[:order]}")
+      recently_response = fetch_xively_url("#{$api_url}/v2/feeds.json?user=airqualityegg&mapped=true&content=summary&per_page=10&order=#{params[:order]}")
       recently_results = Xively::SearchResult.new(recently_response.body).results.map(&:attributes)
       # store in cache and return
       settings.cache.set(cache_key, recently_results, settings.cache_time)
@@ -179,15 +179,15 @@ class AirQualityEgg < Sinatra::Base
 
   def feeds_url(feed)
     feeds_near = (feed && feed.location_lat && feed.location_lon) ? "&lat=#{feed.location_lat}&lon=#{feed.location_lon}&distance=400" : ''
-    "#{$api_url}/v2/feeds.json?tag=device%3Atype%3Dairqualityegg&mapped=true#{feeds_near}"
+    "#{$api_url}/v2/feeds.json?user=airqualityegg&mapped=true#{feeds_near}"
   end
 
   def fetch_all_feeds
     page = 1
     all_feeds = []
-    base_url = "https://api.xively.com/v2/feeds.json?tag=device%3Atype%3Dairqualityegg&mapped=true&content=summary&per_page=100"
+    base_url = "#{$api_url}/v2/feeds.json?user=airqualityegg&mapped=true&content=summary&per_page=100"
     page_response = fetch_xively_url("#{base_url}&page=#{page}")
-    while page_response.code == 200 # Unfortunately, Xively API seems to 500 when there are no more results
+    while page_response.code == 200 && page_response["results"].size > 0 # Unfortunately, Xively API seems to 500 when there are no more results
       logger.info("fetched page #{page} of 100 feeds") if Sinatra::Base.development?
       page_results = Xively::SearchResult.new(page_response.body).results
       all_feeds = all_feeds + page_results
