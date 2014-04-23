@@ -9,6 +9,10 @@ gem 'newrelic_rpm'
 gem 'thin'
 gem 'rack-force_domain'
 
+gem 'memcachier'
+gem 'dalli'
+
+
 group :development do
   gem 'foreman'
 end

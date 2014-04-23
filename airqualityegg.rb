@@ -4,6 +4,9 @@ require 'sinatra/base'
 require 'sinatra/reloader' if Sinatra::Base.development?
 require 'sass'
 require 'xively-rb'
+require 'dalli'
+require 'memcachier'
+require 'json'
 
 
 class AirQualityEgg < Sinatra::Base
@@ -21,14 +24,17 @@ class AirQualityEgg < Sinatra::Base
     puts "WARN: You should set a SESSION_SECRET" unless ENV['SESSION_SECRET']
 
     set :session_secret, ENV['SESSION_SECRET'] || 'airqualityegg_session_secret'
+    set :cache, Dalli::Client.new
   end
 
   configure :production do
     require 'newrelic_rpm'
+    set :cache_time, 3600*12 # 12 hours
   end
 
   configure :development do
     register Sinatra::Reloader
+    set :cache_time, 300 # five minutes
   end
 
   helpers do
@@ -46,10 +52,36 @@ class AirQualityEgg < Sinatra::Base
 
   # Home page
   get '/' do
+    @local_feed_path = '/all_feeds.json'
     @error = session.delete(:error)
-    @feeds = find_egg_feeds
-    @map_markers = collect_map_markers(@feeds)
     erb :home
+  end
+
+  # Endpoint used by home page
+  get '/all_feeds.json' do
+    content_type :json
+    cache_key = "all_feeds"
+    cached_data = settings.cache.fetch(cache_key) do
+      all_feeds = fetch_all_feeds
+      # store in cache and return
+      settings.cache.set(cache_key, all_feeds, settings.cache_time)
+      all_feeds
+    end
+    return cached_data
+  end
+
+  get '/recently_:order.json' do
+    content_type :json
+    cache_key = "recently_#{params[:order]}"
+    cached_data = settings.cache.fetch(cache_key) do
+      # fetch feeds based on input
+      recently_response = fetch_xively_url("#{$api_url}/v2/feeds.json?user=airqualityegg&mapped=true&content=summary&per_page=10&order=#{params[:order]}")
+      recently_results = Xively::SearchResult.new(recently_response.body).results.map(&:attributes)
+      # store in cache and return
+      settings.cache.set(cache_key, recently_results, settings.cache_time)
+      recently_results
+    end
+    return cached_data.to_json
   end
 
   # Edit egg metadata
@@ -104,9 +136,21 @@ class AirQualityEgg < Sinatra::Base
     @co = @feed.datastreams.detect{|d| !d.tags.nil? && d.tags.match(/computed/) && d.tags.match(/sensor_type=CO/)}
     @temperature = @feed.datastreams.detect{|d| !d.tags.nil? && d.tags.match(/computed/) && d.tags.match(/sensor_type=Temperature/)}
     @humidity = @feed.datastreams.detect{|d| !d.tags.nil? && d.tags.match(/computed/) && d.tags.match(/sensor_type=Humidity/)}
+    @local_feed_path = "/egg/#{params[:id]}/nearby.json"
+    erb :show
+  end
+
+  get '/egg/:id/nearby.json' do
+    content_type :json
+    response = Xively::Client.get(feed_url(params[:id]), :headers => {"X-ApiKey" => $api_key})
+    @feed = Xively::Feed.new(response.body)
     @feeds = find_egg_feeds_near(@feed)
     @map_markers = collect_map_markers(@feeds)
-    erb :show
+    return @map_markers
+  end
+
+  get '/cache/flush' do
+    return settings.cache.flush.to_s
   end
 
   private
@@ -143,8 +187,27 @@ class AirQualityEgg < Sinatra::Base
   end
 
   def feeds_url(feed)
-    feeds_near = (feed && feed.location_lat && feed.location_lon) ? "&lat=#{feed.location_lat}&lon=#{feed.location_lon}&distance=400" : ''
-    "#{$api_url}/v2/feeds.json?tag=device%3Atype%3Dairqualityegg&mapped=true#{feeds_near}"
+    feeds_near = (feed && feed.location_lat && feed.location_lon) ? "&lat=#{feed.location_lat}&lon=#{feed.location_lon}&distance=500&distance_units=kms" : ''
+    "#{$api_url}/v2/feeds.json?user=airqualityegg&mapped=true#{feeds_near}"
+  end
+
+  def fetch_all_feeds
+    page = 1
+    all_feeds = []
+    base_url = "#{$api_url}/v2/feeds.json?user=airqualityegg&mapped=true&content=summary&per_page=100"
+    page_response = fetch_xively_url("#{base_url}&page=#{page}")
+    while page_response.code == 200 && page_response["results"].size > 0
+      logger.info("fetched page #{page} of 100 feeds") if Sinatra::Base.development?
+      page_results = Xively::SearchResult.new(page_response.body).results
+      all_feeds = all_feeds + page_results
+      page += 1
+      page_response = fetch_xively_url("#{base_url}&page=#{page}")
+    end
+    all_feeds = collect_map_markers(all_feeds)
+  end
+
+  def fetch_xively_url(url)
+    Xively::Client.get(url, :headers => {'Content-Type' => 'application/json', 'X-ApiKey' => $api_key})
   end
 
   def product_url

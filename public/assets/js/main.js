@@ -8,36 +8,70 @@ var AQE = (function ( $ ) {
   var map;
 
   function initialize() {
-    var mapOptions = {
-      zoom: 3,
-      mapTypeId: google.maps.MapTypeId.TERRAIN,
-      streetViewControl: false,
-      scrollwheel: false
-    };
-    map = new google.maps.Map(document.getElementById('map_canvas'),
-        mapOptions);
-    handleNoGeolocation();
-    
-    if ( $(".dashboard-map").length && mapmarkers && mapmarkers.length ) {
-      var dashpos = new google.maps.LatLng(mapmarkers[0].lat, mapmarkers[0].lng);
-      map.setCenter(dashpos);
-      map.setZoom(5);
-    }
-    // Try HTML5 geolocation
-    else if(navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(function(position) {
-        var pos = new google.maps.LatLng(position.coords.latitude,
-                                          position.coords.longitude);
 
-        map.setCenter(pos);
-      });
+    // load feeds and then initialize map and add the markers
+    if(local_feed_path){
+      $.getJSON(local_feed_path, function(mapmarkers){
+
+        var mapOptions = {
+          zoom: 3,
+          mapTypeId: google.maps.MapTypeId.TERRAIN,
+          streetViewControl: false,
+          scrollwheel: false
+        };
+        map = new google.maps.Map(document.getElementById('map_canvas'),
+            mapOptions);
+        handleNoGeolocation();
+
+        // Create a search box and link it to the UI element
+        // (via https://developers.google.com/maps/documentation/javascript/examples/places-searchbox)
+        var input = (document.getElementById('pac-input'));
+        map.controls[google.maps.ControlPosition.TOP_LEFT].push(input);
+        var searchBox = new google.maps.places.SearchBox((input));
+        google.maps.event.addListener(searchBox, 'places_changed', function() {
+          var places = searchBox.getPlaces();
+          map.setCenter(places[0].geometry.location);
+          map.setZoom(10);
+        });
+
+        // if on an egg's page, zoom in a little close to it
+        if ( $(".dashboard-map").length && mapmarkers && mapmarkers.length ) {
+          var dashpos = new google.maps.LatLng(mapmarkers[0].lat, mapmarkers[0].lng);
+          map.setCenter(dashpos);
+          map.setZoom(6);
+        }
+        // Try HTML5 geolocation
+        else if(navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(function(position) {
+            var pos = new google.maps.LatLng(position.coords.latitude,
+                                              position.coords.longitude);
+
+            map.setCenter(pos);
+          });
+        }
+
+        // add eggs to map
+        for ( var x = 0, len = mapmarkers.length; x < len; x++ ) {
+          addMapMarker( mapmarkers[x].lat, mapmarkers[x].lng, mapmarkers[x].feed_id );
+        }
+
+        $("span#num_eggs").html(mapmarkers.length)
+      })
     }
 
-    if ( mapmarkers && mapmarkers.length ) {
-      for ( var x = 0, len = mapmarkers.length; x < len; x++ ) {
-        addMapMarker( mapmarkers[x].lat, mapmarkers[x].lng, mapmarkers[x].feed_id );
-      }
+    // if on home page, show search box and load recently created and updated eggs
+    if($(".home-map").length != []){
+      $("#pac-input").show()
+      $.each(["recently_created_at","recently_retrieved_at"],function(i,order){
+        $.getJSON("/"+order+".json", function(data){
+          $.each(data, function(i,egg){
+            $("#"+order).append("<li><a href='/egg/"+egg.id+"'>"+egg.title+"</a> is a "+egg.status+" "+egg.location_exposure+" egg that was created "+moment(egg.created).fromNow()+" and last updated "+moment(egg.updated).fromNow()+" </li>")
+          })
+        })
+      })      
     }
+
+
   }
 
   function handleNoGeolocation() {

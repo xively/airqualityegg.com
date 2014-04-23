@@ -17,8 +17,8 @@ The Air Quality Egg dashboard is a [Ruby](http://www.ruby-lang.org/),
 
 ```bash
 # Sample .env file
-PRODUCT_ID=xxxxxx
-API_KEY=xxxxxxx
+PRODUCT_ID=xxxxxx # get this by logging into Xively.com and creating a product batch (Manage > Add Product Batch)
+API_KEY=xxxxxxx # get this by logging into Xively.com and creating a master key (Settings > Master Keys > Add Master Key
 ```
 
 The values in this file are required to interact with Xively, but some value
