@@ -25,6 +25,7 @@ class AirQualityEgg < Sinatra::Base
 
     set :session_secret, ENV['SESSION_SECRET'] || 'airqualityegg_session_secret'
     set :cache, Dalli::Client.new
+    set :protection, except: :session_hijacking
   end
 
   configure :production do
